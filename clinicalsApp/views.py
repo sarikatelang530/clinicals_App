@@ -1,0 +1,59 @@
+from django.shortcuts import render, redirect
+
+from .forms import ClinicalDataForm
+from .models import Patient,ClinicalData
+from django.views.generic import ListView,DeleteView,UpdateView,CreateView
+from django.urls import reverse_lazy
+
+# Create your views here.
+class PatientListView(ListView):
+    model = Patient
+
+
+class PatientCreateView(CreateView):
+    model = Patient
+    success_url = reverse_lazy('index')
+    fields = ('firstName','lastName','age')
+
+
+class PatientUpdateView(UpdateView):
+    model = Patient
+    success_url = reverse_lazy('index')
+    fields = ('firstName','lastName','age')
+
+
+class PatientDeleteView(DeleteView):
+    model = Patient
+    success_url = reverse_lazy('index')
+
+
+def addData(request,**kwargs):
+    form = ClinicalDataForm()
+    patient = Patient.objects.get(id=kwargs['pk'])
+    if request.method=='POST':
+        form = ClinicalDataForm(request.POST)
+        if form.is_valid():
+            form.save()
+        return redirect('/')
+    return render(request,'clinicalsApp/clinicaldata_form.html',{'form':form,'patient':patient})
+
+
+def analyse(request,**kwargs):
+    data = ClinicalData.objects.filter(patient_id=kwargs['pk'])
+    responseData =[]
+    print("start")
+    for eachEntry in data:
+        print("1***")
+        if eachEntry.componentName == 'hw':
+            print("got hw ***")
+            heightAndWeight = eachEntry.componentValue.split('/')
+            if len(heightAndWeight)>1:
+                print("/*/*/*/*/*/*-------------")
+                feetToMeters= (float(heightAndWeight[0]))* 0.4536
+                BMI= (float(heightAndWeight[1]))/(feetToMeters*feetToMeters)
+                bmiEntry = ClinicalData()
+                bmiEntry.componentName = 'BMI'
+                bmiEntry.componentValue = BMI
+                responseData.append(bmiEntry)
+        responseData.append(eachEntry)
+    return render(request, 'clinicalsApp/generateReport.html', {'data': responseData})
